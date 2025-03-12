@@ -1,2 +1,17 @@
-- name: "deploy :: applies the Calico manifests for 50 nodes or less"
-  ansible.builtin.shell: "kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/{{ calico.version }}/manifests/calico.yaml"
+- name: "Tải về file manifest của Calico"
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/projectcalico/calico/{{ calico.version }}/manifests/calico.yaml"
+    dest: "/tmp/calico.yaml"
+    mode: '0644'
+
+- name: "Sửa dải IP trong file calico.yaml"
+  ansible.builtin.replace:
+    path: "/tmp/calico.yaml"
+    regexp: '(\s*- name: CALICO_IPV4POOL_CIDR\s*value:\s*).*'
+    replace: '\1 "{{ kubernetes.CIDR }}"'
+    backup: yes
+
+- name: "Cài đặt Calico trên Kubernetes"
+  ansible.builtin.command:
+    cmd: "kubectl apply -f /tmp/calico.yaml"
+    creates: "/etc/kubernetes/manifests/calico.yaml"

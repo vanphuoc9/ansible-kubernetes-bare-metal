@@ -1,9 +1,9 @@
 kubernetes:
   config: "/home/{{ ansible_user }}/.kube"
-  CIDR: "10.244.0.0/16"
+  CIDR: "10.10.0.0/16"
 
 calico:
-  version: "v3.26.4"
+  version: "v3.25.0"
 
 metallb:
   addresses: 192.168.1.50/32 # 192.168.1.50
@@ -17,7 +17,7 @@ cert_manager:
   version: "v1.13.3"
 
 letsencrypt:
-  email: your-email@gmail.com
+  email: thaiphuoc1997@gmail.com
 
 nfs:
-  whitelist_ips: 192.168.1.0/27 # Ips allow access to NFS server 192.168.1.0 -> 192.168.1.31
+  whitelist_ips: 192.168.1.100/27 # Ips allow access to NFS server 192.168.1.100 -> 192.168.1.131

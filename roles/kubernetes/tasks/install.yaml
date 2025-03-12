@@ -16,11 +16,21 @@
     url: "https://packages.cloud.google.com/apt/doc/apt-key.gpg"
     state: present
 
-- name: "install :: adds the official Kubernetes repository"
+- name: "install :: download and add the Kubernetes GPG key"
   become: true
-  ansible.builtin.apt_repository:
-    repo: "deb [arch=amd64] https://apt.kubernetes.io/ kubernetes-xenial main"
-    state: present
+  ansible.builtin.shell: >
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key |
+    gpg --dearmor -o /etc/apt/keyrings/k8s.gpg
+  args:
+    creates: /etc/apt/keyrings/k8s.gpg
+
+- name: "install :: add the Kubernetes repository"
+  become: true
+  ansible.builtin.shell: >
+    echo 'deb [signed-by=/etc/apt/keyrings/k8s.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' |
+    tee /etc/apt/sources.list.d/k8s.list
+  args:
+    creates: /etc/apt/sources.list.d/k8s.list
 
 - name: "install :: updates package lists"
   become: true
@@ -28,11 +38,12 @@
     update_cache: true
     force_apt_get: true
 
-- name: "install :: installs the Kubernetes packages"
+- name: "install :: install kubelet, kubeadm and kubectl specific version"
   become: true
   ansible.builtin.apt:
-    pkg:
-      - kubeadm=1.28.*
-      - kubelet=1.28.*
-      - kubernetes-cni
+    name:
+      - kubelet=1.32.*
+      - kubeadm=1.32.*
+      - kubectl=1.32.*
+    state: present
     force_apt_get: true

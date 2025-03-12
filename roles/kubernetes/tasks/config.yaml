@@ -4,14 +4,12 @@
     name: kubelet
     enabled: yes
   
-- name: "config :: Hold kubelet package at current version"
+- name: "install :: prevent kubelet, kubeadm and kubectl from being upgraded"
   become: true
   ansible.builtin.dpkg_selections:
-    name: 'kubelet'
+    name: "{{ item }}"
     selection: hold
-
-- name: "config :: Hold kubeadm package at current version"
-  become: true
-  ansible.builtin.dpkg_selections:
-    name: 'kubeadm'
-    selection: hold
+  loop:
+    - kubelet
+    - kubeadm
+    - kubectl
