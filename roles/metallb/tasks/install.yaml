@@ -1,26 +1,60 @@
-- name: "deploy :: applies the MetalLB manifests"
-  ansible.builtin.shell: |
-    kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/{{ metallb.version }}/config/manifests/metallb-native.yaml
-    kubectl wait pod --all --for=condition=Ready --namespace=metallb-system --timeout=300s
+- name: "Lấy kube-proxy ConfigMap hiện tại"
+  ansible.builtin.command: "kubectl get configmap kube-proxy -n kube-system -o yaml"
+  register: kube_proxy_config
+  changed_when: false
 
-- name: "deploy :: now feed it to apply MetalLB config"
-  ansible.builtin.shell: |
-    cat <<EOF | kubectl apply -f -
-    apiVersion: metallb.io/v1beta1
-    kind: IPAddressPool
-    metadata:
-      name: ip-pool
-      namespace: metallb-system
-    spec:
-      addresses:
-      - {{ metallb.addresses }}
-    ---
-    apiVersion: metallb.io/v1beta1
-    kind: L2Advertisement
-    metadata:
-      name: metallb-ip-space
-      namespace: metallb-system
-    spec:
-      ipAddressPools:
-      - ip-pool
-    EOF
+- name: "Kiểm tra sự thay đổi của strictARP"
+  ansible.builtin.command:
+    cmd: "kubectl diff -f - -n kube-system"
+  args:
+    stdin: "{{ kube_proxy_config.stdout | regex_replace('strictARP: false', 'strictARP: true') }}"
+  register: diff_result
+  changed_when: diff_result.rc != 0
+  failed_when: diff_result.rc not in [0, 1]
+
+- name: "Cập nhật strictARP nếu có thay đổi"
+  ansible.builtin.command:
+    cmd: "kubectl apply -f - -n kube-system"
+  args:
+    stdin: "{{ kube_proxy_config.stdout | regex_replace('strictARP: false', 'strictARP: true') }}"
+  when: diff_result.rc != 0
+
+# Cài đặt MetalLB
+- name: "Tải về & Cài đặt MetalLB manifests"  
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/metallb/metallb/{{ metallb.version }}/config/manifests/metallb-native.yaml"
+    dest: "/tmp/metallb-native.yaml"
+    mode: '0644'
+
+- name: "Áp dụng MetalLB manifests"
+  ansible.builtin.command:
+    cmd: "kubectl apply -f /tmp/metallb-native.yaml"
+
+- name: "Chờ tất cả MetalLB pods sẵn sàng"
+  ansible.builtin.command:
+    cmd: "kubectl wait pod --all --for=condition=Ready --namespace=metallb-system --timeout=300s"
+  changed_when: false
+
+# Áp dụng cấu hình MetalLB mà không cần file YAML riêng
+- name: "Tạo và áp dụng cấu hình IPAddressPool & L2Advertisement"
+  ansible.builtin.command:
+    cmd: "kubectl apply -f -"
+  args:
+    stdin: |
+      apiVersion: metallb.io/v1beta1
+      kind: IPAddressPool
+      metadata:
+        name: ip-pool
+        namespace: metallb-system
+      spec:
+        addresses:
+        - {{ metallb.addresses }}
+      ---
+      apiVersion: metallb.io/v1beta1
+      kind: L2Advertisement
+      metadata:
+        name: metallb-ip-space
+        namespace: metallb-system
+      spec:
+        ipAddressPools:
+        - ip-pool
