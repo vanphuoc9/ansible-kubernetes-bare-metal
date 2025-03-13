@@ -42,8 +42,8 @@
   become: true
   ansible.builtin.apt:
     pkg:
-      - kubelet=1.32.3
-      - kubeadm=1.32.3
-      - kubectl=1.32.3
+    - kubeadm=1.30.*
+    - kubelet=1.30.*
+    - kubectl=1.30.*
     state: present
     force_apt_get: true
