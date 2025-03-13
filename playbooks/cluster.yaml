@@ -94,7 +94,7 @@
         name: "cert-manager"
 
 - name: "provisioning : deployment of NFS storage to a new Kubernetes cluster"
-  hosts: nfs-servers
+  hosts: nfs_servers
   gather_facts: true
   vars_files:
     - "{{ playbook_dir }}/../defaults/main.yaml"
@@ -102,4 +102,4 @@
   tasks:
     - name: "includes the NFS Storage role"
       ansible.builtin.include_role:
-        name: "nfs-server"
+        name: "nfs_servers"
